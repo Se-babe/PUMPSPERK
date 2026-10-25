@@ -2,11 +2,12 @@ import { lazy, Suspense, useState } from "react";
 import { Icon, type IconName } from "./icons";
 import { MotoristApp } from "./mvp/MotoristApp";
 import { PumpPerksProvider } from "./mvp/PumpPerksProvider";
+import { AdminApp } from "./mvp/AdminApp";
 import { StationApp } from "./mvp/StationApp";
 
 const LowFiApp = lazy(() => import("./LowFiApp"));
 
-type View = "home" | "driver" | "station";
+type View = "home" | "driver" | "station" | "admin";
 
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1723021939081-31f4ab31456a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=85&w=1600";
@@ -34,6 +35,7 @@ function Header({ view, setView }: { view: View; setView: (view: View) => void }
         <button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}>Why PumpPerks</button>
         <button className={view === "driver" ? "active" : ""} onClick={() => navigate("driver")}>For motorists</button>
         <button className={view === "station" ? "active" : ""} onClick={() => navigate("station")}>For stations</button>
+        <button className={view === "admin" ? "active" : ""} onClick={() => navigate("admin")}>Admin</button>
         <button onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}>Pricing</button>
       </nav>
       <div className="header-actions">
@@ -227,18 +229,19 @@ function HighFiApp() {
   const setView = (next: View) => {
     const url = new URL(window.location.href);
     if (next === "home") url.searchParams.delete("app");
-    else url.searchParams.set("app", next === "driver" ? "motorist" : "station");
+    else url.searchParams.set("app", next === "driver" ? "motorist" : next);
     window.history.replaceState({}, "", url);
     window.dispatchEvent(new Event("pumpperks-view"));
     setViewState(next);
   };
-  return <div className="high-fi"><Header view={view} setView={setView} />{view === "home" && <HomePage setView={setView} />}{view === "driver" && <MotoristApp />}{view === "station" && <StationApp />}</div>;
+  return <div className="high-fi"><Header view={view} setView={setView} />{view === "home" && <HomePage setView={setView} />}{view === "driver" && <MotoristApp />}{view === "station" && <StationApp />}{view === "admin" && <AdminApp />}</div>;
 }
 
 function initialView(): View {
   const app = new URLSearchParams(window.location.search).get("app");
   if (app === "motorist" || app === "driver") return "driver";
   if (app === "station") return "station";
+  if (app === "admin") return "admin";
   return "home";
 }
 

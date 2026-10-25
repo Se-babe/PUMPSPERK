@@ -10,6 +10,7 @@ export type Reward = {
   name: string;
   detail: string;
   cost: number;
+  active: boolean;
 };
 
 export type Customer = {
@@ -23,7 +24,8 @@ export type Customer = {
 export type Activity = {
   id: string;
   customerId: string;
-  kind: "earn" | "redeem";
+  kind: "earn" | "redeem" | "adjust";
+  note?: string;
   points: number;
   amountUgx?: number;
   fuel?: Fuel;
@@ -40,6 +42,7 @@ export type State = {
   seq: number;
   customers: Customer[];
   activity: Activity[];
+  rewards: Reward[];
 };
 
 export type Action =
@@ -47,6 +50,8 @@ export type Action =
   | { type: "purchase"; phone: string; name?: string; amount: number; fuel: Fuel; litres?: number }
   | { type: "redeem"; phone: string; rewardId: string }
   | { type: "confirm"; activityId: string }
+  | { type: "adjust"; phone: string; points: number; note: string }
+  | { type: "reward"; rewardId: string; cost: number; active: boolean }
   | { type: "reset" };
 
 export type ApplyResult = {
@@ -56,9 +61,9 @@ export type ApplyResult = {
 };
 
 export const REWARDS: Reward[] = [
-  { id: "fuel", name: "UGX 5,000 fuel discount", detail: "Taken off a fuel purchase at the till.", cost: 1000 },
-  { id: "wash", name: "Free standard car wash", detail: "One standard wash at this station.", cost: 1800 },
-  { id: "service", name: "15% off an oil change", detail: "Discount on a standard oil change.", cost: 2200 },
+  { id: "fuel", name: "UGX 5,000 fuel discount", detail: "Taken off a fuel purchase at the till.", cost: 1000, active: true },
+  { id: "wash", name: "Free standard car wash", detail: "One standard wash at this station.", cost: 1800, active: true },
+  { id: "service", name: "15% off an oil change", detail: "Discount on a standard oil change.", cost: 2200, active: true },
 ];
 
 export function pointsForAmount(amount: number) {
@@ -90,7 +95,8 @@ export function formatUgx(value: number) {
 
 export function formatPoints(kind: Activity["kind"], points: number) {
   const amount = Math.abs(points).toLocaleString("en-US");
-  return kind === "earn" ? `+${amount}` : `-${amount}`;
+  const positive = kind === "earn" || (kind === "adjust" && points > 0);
+  return positive ? `+${amount}` : `-${amount}`;
 }
 
 export function isValidName(value: string) {
@@ -139,6 +145,27 @@ export function accountState(state: State, phoneRaw: string): State | null {
     seq: state.seq,
     customers: [customer],
     activity: state.activity.filter((item) => item.customerId === customer.id),
+    rewards: state.rewards,
+  };
+}
+
+export function normalizeState(value: Partial<State> | null | undefined): State | null {
+  if (!value || !Array.isArray(value.customers) || !Array.isArray(value.activity)) return null;
+  const saved = Array.isArray(value.rewards) ? value.rewards : [];
+  return {
+    revision: Number(value.revision) || 0,
+    seq: Number(value.seq) || 0,
+    customers: value.customers,
+    activity: value.activity,
+    rewards: REWARDS.map((reward) => {
+      const match = saved.find((item) => item.id === reward.id);
+      const cost = Math.round(Number(match?.cost));
+      return {
+        ...reward,
+        cost: Number.isFinite(cost) && cost >= 100 ? cost : reward.cost,
+        active: match ? match.active !== false : reward.active,
+      };
+    }),
   };
 }
 
@@ -213,6 +240,10 @@ export function apply(state: State, action: Action): ApplyResult {
       return redeemReward(state, action);
     case "confirm":
       return confirmRedemption(state, action);
+    case "adjust":
+      return adjustPoints(state, action);
+    case "reward":
+      return updateReward(state, action);
     default:
       return { state, error: "That action is not available in this test build." };
   }
@@ -247,6 +278,7 @@ export function createSeed(now = new Date()): State {
     seq: 2048,
     customers: withPoints(customers, activity),
     activity,
+    rewards: REWARDS.map((reward) => ({ ...reward })),
   };
   const expected: Record<string, number> = {
     "c-andrew": 2480,
@@ -349,7 +381,7 @@ function redeemReward(state: State, action: { phone: string; rewardId: string })
   if (!phone) return { state, error: "Sign in with your phone number first." };
   const customer = state.customers.find((item) => item.phone === phone);
   if (!customer) return { state, error: "No PumpPerks account was found for this number." };
-  const reward = rewardById(action.rewardId);
+  const reward = state.rewards.find((item) => item.id === action.rewardId && item.active);
   if (!reward) return { state, error: "That reward is not available." };
   if (customer.points < reward.cost) {
     const missing = (reward.cost - customer.points).toLocaleString("en-US");
@@ -394,6 +426,57 @@ function confirmRedemption(state: State, action: { activityId: string }): ApplyR
   };
 }
 
+function adjustPoints(state: State, action: { phone: string; points: number; note: string }): ApplyResult {
+  const phone = normalizePhone(action.phone);
+  if (!phone) return { state, error: "Enter a valid Ugandan mobile number." };
+  const customer = state.customers.find((item) => item.phone === phone);
+  if (!customer) return { state, error: "No PumpPerks account was found for this number." };
+  const points = Math.round(action.points);
+  if (!Number.isFinite(points) || points === 0 || Math.abs(points) > 100_000) {
+    return { state, error: "Enter a points change between -100,000 and 100,000, other than zero." };
+  }
+  if (customer.points + points < 0) return { state, error: "That change would take the balance below zero." };
+  const note = cleanNote(action.note);
+  if (!note) return { state, error: "Add a short reason, using letters and numbers." };
+  const seq = state.seq + 1;
+  const entry: Activity = {
+    id: `PP-${seq}`,
+    customerId: customer.id,
+    kind: "adjust",
+    points,
+    note,
+    createdAt: new Date().toISOString(),
+    stationName: STATION_NAME,
+  };
+  return {
+    state: {
+      ...state,
+      revision: state.revision + 1,
+      seq,
+      customers: state.customers.map((item) => (item.id === customer.id ? { ...item, points: item.points + points } : item)),
+      activity: [entry, ...state.activity],
+    },
+    activityId: entry.id,
+  };
+}
+
+function updateReward(state: State, action: { rewardId: string; cost: number; active: boolean }): ApplyResult {
+  if (!state.rewards.some((reward) => reward.id === action.rewardId)) {
+    return { state, error: "That reward was not found." };
+  }
+  const cost = Math.round(action.cost);
+  if (!Number.isFinite(cost) || cost < 100 || cost > 100_000) {
+    return { state, error: "Set a reward cost between 100 and 100,000 points." };
+  }
+  return {
+    state: {
+      ...state,
+      revision: state.revision + 1,
+      rewards: state.rewards.map((reward) => (reward.id === action.rewardId ? { ...reward, cost, active: action.active } : reward)),
+    },
+  };
+}
+
 function seedEarn(id: string, customerId: string, amountUgx: number, fuel: Fuel, createdAt: string): Activity {
   return {
     id,
@@ -427,8 +510,15 @@ function withPoints(customers: Customer[], activity: Activity[]) {
     ...customer,
     points: activity
       .filter((item) => item.customerId === customer.id)
-      .reduce((sum, item) => sum + (item.kind === "earn" ? item.points : -item.points), 0),
+      .reduce((sum, item) => sum + (item.kind === "earn" ? item.points : item.kind === "adjust" ? item.points : -item.points), 0),
   }));
+}
+
+function cleanNote(value: string) {
+  const note = value.replace(/\s+/g, " ").trim();
+  if (note.length < 3 || note.length > 80) return "";
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} '.,:-]*$/u.test(note)) return "";
+  return note;
 }
 
 function cleanName(value: string) {

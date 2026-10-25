@@ -535,6 +535,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .mvp-station .station-profile small, .mvp-station .station-user small { font-size: 12px; }
 .mvp-station .station-user b { font-size: 13px; }
 .mvp-station .station-user button { border: 0; background: transparent; color: #d5e7a8; font-weight: 700; font-size: 13px; padding: 8px 0; }
+.admin-customers { display: grid; gap: 16px; }
+.admin-customer-list { display: grid; gap: 8px; }
+.admin-customer-list button { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; text-align: left; background: white; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.admin-customer-list button.active { border-color: var(--forest); background: #f3f8e8; }
+.admin-customer-list span { color: var(--muted); font-size: 13px; }
+.admin-customer-list strong { grid-row: span 2; align-self: center; }
+.pending-list form { display: grid; gap: 10px; padding: 14px 0; border-top: 1px solid var(--line); }
+.pending-list form .lime-button { justify-self: start; }
+.admin-check { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .mvp-station .station-main > header small { font-size: 12px; }
 .mvp-station .station-main > header h1 { font-size: 32px; }
 .mvp-station .export-button, .mvp-station .station-toolbar button, .mvp-station .table-filters button { font-size: 14px; }

@@ -2,11 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Connect, Plugin } from "vite";
-import { accountState, apply, createSeed, normalizePhone, type Action, type ApplyResult, type State } from "./logic";
+import { accountState, apply, createSeed, normalizePhone, normalizeState, type Action, type ApplyResult, type State } from "./logic";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const FILE = path.join(ROOT, "data", "pumpperks-state.json");
-const ACTIONS = new Set<Action["type"]>(["register", "purchase", "redeem", "confirm", "reset"]);
+const ACTIONS = new Set<Action["type"]>(["register", "purchase", "redeem", "confirm", "adjust", "reward", "reset"]);
 
 let chain: Promise<unknown> = Promise.resolve();
 
@@ -93,13 +93,15 @@ function visibleResult(result: ApplyResult, action: Action): ApplyResult {
   const account = accountState(result.state, action.phone);
   return {
     ...result,
-    state: account ?? { revision: result.state.revision, seq: result.state.seq, customers: [], activity: [] },
+    state: account ?? { revision: result.state.revision, seq: result.state.seq, customers: [], activity: [], rewards: result.state.rewards },
   };
 }
 
 function readState(): State {
   try {
-    return JSON.parse(fs.readFileSync(FILE, "utf8")) as State;
+    const parsed = normalizeState(JSON.parse(fs.readFileSync(FILE, "utf8")) as State);
+    if (!parsed) throw new Error("Stored PumpPerks data is incomplete.");
+    return parsed;
   } catch {
     const seed = createSeed();
     writeState(seed);

@@ -3,6 +3,8 @@ import {
   apply,
   createSeed,
   normalizePhone,
+  normalizeState,
+  REWARDS,
   type Action,
   type ApplyResult,
   type Customer,
@@ -31,6 +33,8 @@ type PumpApi = {
   recordPurchase: (input: PurchaseInput) => Promise<ApplyResult>;
   redeem: (rewardId: string) => Promise<ApplyResult>;
   confirmRedemption: (activityId: string) => Promise<ApplyResult>;
+  adjustPoints: (phone: string, points: number, note: string) => Promise<ApplyResult>;
+  updateReward: (rewardId: string, cost: number, active: boolean) => Promise<ApplyResult>;
   resetDemo: () => Promise<ApplyResult>;
 };
 
@@ -79,18 +83,18 @@ export function PumpPerksProvider({ children }: { children: ReactNode }) {
       }
       remoteRef.current = true;
       setRemote(true);
-      if (readRole() === "station") {
+      if (seesEveryone(readRole())) {
         const shared = await fetchState();
-        if (!stopped && readRole() === "station" && shared) accept(shared, true);
+        if (!stopped && seesEveryone(readRole()) && shared) accept(shared, true);
         return;
       }
       const phone = readSession();
       if (!phone) {
-        if (!phoneRef.current && readRole() !== "station") accept(emptyState(), true);
+        if (!phoneRef.current && !seesEveryone(readRole())) accept(emptyState(), true);
         return;
       }
       const account = await fetchAccount(phone);
-      if (stopped || readRole() === "station") return;
+      if (stopped || seesEveryone(readRole())) return;
       if (account === "missing") {
         localStorage.removeItem(SESSION_KEY);
         setMotoristPhone(null);
@@ -108,9 +112,9 @@ export function PumpPerksProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!remote) return;
     const timer = window.setInterval(async () => {
-      if (roleRef.current === "station") {
+      if (seesEveryone(roleRef.current)) {
         const shared = await fetchState();
-        if (roleRef.current === "station" && shared) accept(shared);
+        if (seesEveryone(roleRef.current) && shared) accept(shared);
         return;
       }
       const phone = phoneRef.current;
@@ -209,6 +213,8 @@ export function PumpPerksProvider({ children }: { children: ReactNode }) {
           return dispatch({ type: "redeem", phone, rewardId });
         },
         confirmRedemption: (activityId) => dispatch({ type: "confirm", activityId }),
+        adjustPoints: (phone, points, note) => dispatch({ type: "adjust", phone, points, note }),
+        updateReward: (rewardId, cost, active) => dispatch({ type: "reward", rewardId, cost, active }),
         resetDemo: () => dispatch({ type: "reset" }),
       }
     : null;
@@ -224,16 +230,21 @@ export function usePumpPerks() {
 }
 
 function emptyState(): State {
-  return { revision: 0, seq: 0, customers: [], activity: [] };
+  return { revision: 0, seq: 0, customers: [], activity: [], rewards: REWARDS.map((reward) => ({ ...reward })) };
 }
 
-type AppRole = "motorist" | "station" | "public";
+type AppRole = "motorist" | "station" | "admin" | "public";
 
 function readRole(): AppRole {
   const app = new URLSearchParams(window.location.search).get("app");
   if (app === "motorist" || app === "driver") return "motorist";
   if (app === "station") return "station";
+  if (app === "admin") return "admin";
   return "public";
+}
+
+function seesEveryone(role: AppRole) {
+  return role === "station" || role === "admin";
 }
 
 async function probeApi() {
@@ -250,8 +261,8 @@ async function fetchAccount(phone: string): Promise<State | "missing" | "offline
     const response = await fetch(`/api/account?phone=${encodeURIComponent(phone)}`, { headers: { Accept: "application/json" } });
     if (response.status === 404) return "missing";
     if (!response.ok) return "offline";
-    const data = (await response.json()) as State;
-    if (!data || !Array.isArray(data.customers) || data.customers.length !== 1) return "offline";
+    const data = normalizeState((await response.json()) as State);
+    if (!data || data.customers.length !== 1) return "offline";
     return data;
   } catch {
     return "offline";
@@ -262,9 +273,7 @@ async function fetchState() {
   try {
     const response = await fetch("/api/state", { headers: { Accept: "application/json" } });
     if (!response.ok) return null;
-    const data = (await response.json()) as State;
-    if (!data || !Array.isArray(data.customers) || !Array.isArray(data.activity)) return null;
-    return data;
+    return normalizeState((await response.json()) as State);
   } catch {
     return null;
   }
@@ -274,9 +283,7 @@ function readLocal() {
   try {
     const raw = localStorage.getItem(STATE_KEY);
     if (!raw) return null;
-    const data = JSON.parse(raw) as State;
-    if (!Array.isArray(data.customers) || !Array.isArray(data.activity)) return null;
-    return data;
+    return normalizeState(JSON.parse(raw) as State);
   } catch {
     return null;
   }

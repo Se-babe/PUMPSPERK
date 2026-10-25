@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "../icons";
 import {
-  REWARDS,
   formatPhone,
   formatPoints,
   formatUgx,
@@ -30,8 +29,9 @@ export function MotoristApp() {
     if (motoristId) setTab("home");
   }, [motoristId]);
 
-  const reward = REWARDS.find((item) => item.id === chosen);
-  const issued = state.activity.find((item) => item.code === code && item.customerId === motorist.id);
+  const catalog = state.rewards.filter((item) => item.active);
+  const reward = state.rewards.find((item) => item.id === chosen);
+  const issued = motorist ? state.activity.find((item) => item.code === code && item.customerId === motorist.id) : undefined;
 
   const confirm = async () => {
     if (!chosen) return;
@@ -69,7 +69,8 @@ export function MotoristApp() {
               <p className="mvp-lead">You have {motorist.points.toLocaleString("en-US")} points, worth about {formatUgx(pointsValue(motorist.points))}.</p>
               {error && <p className="mvp-error">{error}</p>}
               <div className="mvp-reward-list">
-                {REWARDS.map((item) => {
+                {catalog.length === 0 && <p className="mvp-empty">No rewards are open right now.</p>}
+                {catalog.map((item) => {
                   const missing = item.cost - motorist.points;
                   return (
                     <article key={item.id}>
@@ -150,7 +151,7 @@ function Home({ onOpen }: { onOpen: (tab: Tab) => void }) {
   const { motorist, state } = usePumpPerks();
   if (!motorist) return null;
   const recent = state.activity.filter((item) => item.customerId === motorist.id).slice(0, 3);
-  const next = REWARDS.find((reward) => reward.cost > motorist.points);
+  const next = state.rewards.filter((reward) => reward.active).find((reward) => reward.cost > motorist.points);
   const target = next?.cost ?? motorist.points;
   const progress = target === 0 ? 0 : Math.min(100, Math.round((motorist.points / target) * 100));
   return (
@@ -198,15 +199,17 @@ function ActivityRows({ items }: { items: Activity[] }) {
     <div className="mvp-activity">
       {items.map((item) => {
         const reward = rewardById(item.rewardId);
-        const title = item.kind === "earn" ? item.stationName : reward?.name ?? "Reward";
+        const title = item.kind === "earn" ? item.stationName : item.kind === "adjust" ? "Balance update" : reward?.name ?? "Reward";
         const detail = item.kind === "earn"
           ? `${formatWhen(item.createdAt)} · ${formatUgx(item.amountUgx ?? 0)}`
-          : `${formatWhen(item.createdAt)} · ${item.status === "used" ? "Collected" : `Code ${item.code} · waiting at the till`}`;
+          : item.kind === "adjust"
+            ? `${formatWhen(item.createdAt)} · ${item.note ?? "Adjusted by admin"}`
+            : `${formatWhen(item.createdAt)} · ${item.status === "used" ? "Collected" : `Code ${item.code} · waiting at the till`}`;
         return (
           <article key={item.id}>
             <span><Icon name={item.kind === "earn" ? "station" : "gift"} size={16} /></span>
             <div><b>{title}</b><small>{detail}</small></div>
-            <strong className={item.kind === "earn" ? "plus" : "minus"}>{formatPoints(item.kind, item.points)}</strong>
+            <strong className={item.kind === "redeem" || item.points < 0 ? "minus" : "plus"}>{formatPoints(item.kind, item.points)}</strong>
           </article>
         );
       })}

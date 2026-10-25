@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Icon, type IconName } from "../icons";
 import {
-  REWARDS,
   STATION_NAME,
   customerById,
   dailyEarnCounts,
@@ -209,7 +208,7 @@ function StationDesk({ staffName, onLogout }: { staffName: string; onLogout: () 
 function Chart({ state }: { state: State }) {
   const days = dailyEarnCounts(state);
   const max = Math.max(1, ...days.map((day) => day.count));
-  const counts = REWARDS.map((reward) => ({
+  const counts = state.rewards.map((reward) => ({
     reward,
     count: state.activity.filter((item) => item.kind === "redeem" && item.rewardId === reward.id).length,
   }));
@@ -272,9 +271,9 @@ function TransactionTable({ rows, state }: { rows: Activity[]; state: State }) {
               <tr key={item.id}>
                 <td>{item.id}</td>
                 <td><span className="table-avatar">{initials(customer?.name ?? "?")}</span><span className="who"><b>{customer?.name ?? "Unknown"}</b><small>{customer ? formatPhone(customer.phone) : ""}</small></span></td>
-                <td>{item.kind === "earn" ? item.fuel : `${reward?.name ?? "Reward"}${item.status === "pending" ? " · waiting" : ""}`}</td>
+                <td>{item.kind === "earn" ? item.fuel : item.kind === "adjust" ? item.note ?? "Balance correction" : `${reward?.name ?? "Reward"}${item.status === "pending" ? " · waiting" : ""}`}</td>
                 <td>{item.amountUgx ? formatUgx(item.amountUgx) : "—"}</td>
-                <td className={item.kind === "earn" ? "positive" : "negative"}>{formatPoints(item.kind, item.points)}</td>
+                <td className={item.kind === "redeem" || item.points < 0 ? "negative" : "positive"}>{formatPoints(item.kind, item.points)}</td>
                 <td>{formatWhen(item.createdAt)}</td>
               </tr>
             );
@@ -322,11 +321,11 @@ function Rewards({ state, pending, saving, onConfirm }: { state: State; pending:
         })}
       </div>
       <div className="reward-cards">
-        {REWARDS.map((reward, index) => {
+        {state.rewards.map((reward, index) => {
           const count = state.activity.filter((item) => item.rewardId === reward.id).length;
           return (
             <article key={reward.id}>
-              <div className={`reward-art art-${index + 1}`}><Icon name={index === 0 ? "station" : index === 1 ? "bolt" : "settings"} size={27} /><span>PILOT</span></div>
+              <div className={`reward-art art-${index + 1}`}><Icon name={index === 0 ? "station" : index === 1 ? "bolt" : "settings"} size={27} /><span>{reward.active ? "OPEN" : "CLOSED"}</span></div>
               <small>{reward.detail.toUpperCase()}</small>
               <h3>{reward.name}</h3>
               <div><b>{reward.cost.toLocaleString("en-US")} pts</b><span>{count} redeemed</span></div>
