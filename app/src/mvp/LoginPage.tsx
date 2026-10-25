@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Icon, type IconName } from "../icons";
 import { isValidName } from "./logic";
 import { usePumpPerks } from "./PumpPerksProvider";
 import { ADMIN_CODE, ADMIN_KEY, STATION_CODE, STAFF_KEY, saveNamedSession } from "./sessions";
@@ -39,28 +40,81 @@ export function LoginPage({ onEnter }: { onEnter: (view: Destination) => void })
   };
 
   return (
-    <main className="mvp-motorist">
-      <form className="mvp-phone mvp-join" onSubmit={(event) => void submit(event)}>
-        <span className="section-tag">PUMPPERKS</span>
-        <h1>Log in</h1>
-        <p>Customers, station staff, and admins use this page. The code decides where you go.</p>
-        <label className="mvp-field">Full name
-          <input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Amina Nakiwala" />
-        </label>
-        <label className="mvp-field">Mobile number
-          <input autoComplete="tel" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0772 000 111" />
-        </label>
-        <label className="mvp-field">Access code
-          <input inputMode="numeric" autoComplete="off" value={code} onChange={(event) => setCode(event.target.value)} placeholder="Leave empty for a customer" />
-        </label>
-        {error && <p className="mvp-error">{error}</p>}
-        <button className="lime-button large" type="submit" disabled={saving}>{saving ? "Please wait…" : "Log in"}</button>
-        <button className="mvp-secondary" type="button" disabled={saving} onClick={() => void demo()}>Log in as Andrew Kato</button>
-        <small>Customers use a mobile number and leave the code empty. New customers also enter their name. Station code {STATION_CODE}. Admin code {ADMIN_CODE}.</small>
-      </form>
+    <main className="land">
+      <header className="land-bar">
+        <div className="brand"><span className="brand-symbol"><Icon name="bolt" size={17} /></span><span>Pump<span>Perks</span></span></div>
+        <span>Makerere Fuel · loyalty pilot</span>
+      </header>
+      <section className="land-hero">
+        <div className="land-story">
+          <span className="section-tag">HOW THE PILOT WORKS</span>
+          <h1>Every fill-up can earn something back.</h1>
+          <p>PumpPerks is the loyalty account for this station. A motorist uses a phone number instead of a card. The attendant records the fuel. Points show up on that customer’s phone, and only on theirs.</p>
+          <div className="land-facts">
+            <article><b>4</b><span>points for every UGX 1,000 of fuel</span></article>
+            <article><b>5</b><span>shillings of reward value in each point</span></article>
+            <article><b>1</b><span>phone number is the whole membership card</span></article>
+          </div>
+          <div className="land-roles">
+            {ROLES.map(([icon, title, copy]) => (
+              <article key={title}>
+                <span><Icon name={icon} size={18} /></span>
+                <div><b>{title}</b><p>{copy}</p></div>
+              </article>
+            ))}
+          </div>
+        </div>
+        <form className="land-card" onSubmit={(event) => void submit(event)}>
+          <span className="section-tag">SIGN IN</span>
+          <h2>Open your side of the pilot.</h2>
+          <p>One page for customers, the till, and the admin. The access code chooses the screen.</p>
+          <label className="mvp-field">Full name
+            <input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Amina Nakiwala" />
+          </label>
+          <label className="mvp-field">Mobile number
+            <input autoComplete="tel" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0772 000 111" />
+          </label>
+          <label className="mvp-field">Access code
+            <input inputMode="numeric" autoComplete="off" value={code} onChange={(event) => setCode(event.target.value)} placeholder="Leave empty for a customer" />
+          </label>
+          {error && <p className="mvp-error">{error}</p>}
+          <button className="lime-button large" type="submit" disabled={saving}>{saving ? "Please wait…" : "Log in"}</button>
+          <button className="mvp-secondary" type="button" disabled={saving} onClick={() => void demo()}>Log in as Andrew Kato</button>
+          <small>New customers add their name and leave the code empty. Station code {STATION_CODE}. Admin code {ADMIN_CODE}. Andrew’s sample number is 0756 365 310.</small>
+        </form>
+      </section>
+      <section className="land-path">
+        <div className="section-lead">
+          <span className="section-tag">A VISIT</span>
+          <h2>From the pump to the points.</h2>
+        </div>
+        <div className="land-steps">
+          {STEPS.map(([icon, title, copy], index) => (
+            <article key={title}>
+              <em>0{index + 1}</em>
+              <span><Icon name={icon} size={20} /></span>
+              <h3>{title}</h3>
+              <p>{copy}</p>
+            </article>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }
+
+const ROLES: [IconName, string, string][] = [
+  ["phone", "Motorist", "Log in with your number and see only your points, rewards, and fill-ups."],
+  ["station", "Station", "Record a purchase at the till and mark a reward as given."],
+  ["settings", "Admin", "Correct a balance, open or close a reward, and restore the sample data."],
+];
+
+const STEPS: [IconName, string, string][] = [
+  ["people", "Join with a number", "A new motorist enters a name and a Ugandan mobile number. No card is issued."],
+  ["station", "Fuel is recorded", "The attendant enters the amount. UGX 85,000 earns 340 points."],
+  ["gift", "Redeem at the till", "The motorist chooses a reward and shows the code. The attendant confirms it."],
+  ["check", "Each person sees their own screen", "Customers never see another balance. Staff and admin use their codes."],
+];
 
 async function signIn(
   name: string,
