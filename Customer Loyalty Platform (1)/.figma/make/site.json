@@ -1,0 +1,11 @@
+{
+  "title": "pumpPerks",
+  "description": "A digital loyalty platform for Ugandan petrol stations that tracks fuel purchases, awards points, and enables customers to redeem rewards, boosting retention and insights.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
