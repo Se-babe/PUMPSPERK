@@ -25,6 +25,9 @@ import {
 } from "./logic";
 import { usePumpPerks } from "./PumpPerksProvider";
 
+const STAFF_KEY = "pumpperks-mvp-staff";
+const PILOT_CODE = "2048";
+
 type Section = "Overview" | "Transactions" | "Customers" | "Rewards" | "Campaigns";
 
 const NAV: [IconName, Section][] = [
@@ -36,6 +39,63 @@ const NAV: [IconName, Section][] = [
 ];
 
 export function StationApp() {
+  const [staffName, setStaffName] = useState<string | null>(() => readStaff());
+  if (!staffName) return <StaffLogin onSuccess={setStaffName} />;
+  return <StationDesk staffName={staffName} onLogout={() => { localStorage.removeItem(STAFF_KEY); setStaffName(null); }} />;
+}
+
+function StaffLogin({ onSuccess }: { onSuccess: (name: string) => void }) {
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const nextName = name.trim().replace(/\s+/g, " ");
+    if (!isValidName(nextName)) {
+      setError("Enter the attendant’s name using letters only.");
+      return;
+    }
+    if (code.trim() !== PILOT_CODE) {
+      setError("That pilot code is not correct. Use 2048 for this test.");
+      return;
+    }
+    localStorage.setItem(STAFF_KEY, JSON.stringify({ name: nextName }));
+    onSuccess(nextName);
+  };
+
+  return (
+    <main className="mvp-staff-gate">
+      <form className="mvp-staff-card" onSubmit={submit}>
+        <span className="section-tag">STATION PORTAL</span>
+        <h1>Log in as the attendant.</h1>
+        <p>Record purchases and confirm rewards only after you log in. Log out when you leave the till.</p>
+        <label className="mvp-field">Attendant name
+          <input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Amina Nakiwala" />
+        </label>
+        <label className="mvp-field">Pilot code
+          <input inputMode="numeric" autoComplete="off" value={code} onChange={(event) => setCode(event.target.value)} placeholder="2048" />
+        </label>
+        {error && <p className="mvp-error">{error}</p>}
+        <button className="lime-button large" type="submit">Log in</button>
+        <small>This test uses pilot code {PILOT_CODE}. Logging out does not delete customer points.</small>
+      </form>
+    </main>
+  );
+}
+
+function readStaff() {
+  try {
+    const raw = localStorage.getItem(STAFF_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as { name?: string };
+    return data.name && isValidName(data.name) ? data.name : null;
+  } catch {
+    return null;
+  }
+}
+
+function StationDesk({ staffName, onLogout }: { staffName: string; onLogout: () => void }) {
   const pump = usePumpPerks();
   const { state, recordPurchase, confirmRedemption, resetDemo } = pump;
   const [section, setSection] = useState<Section>("Overview");
@@ -76,7 +136,11 @@ export function StationApp() {
             </button>
           ))}
         </nav>
-        <div className="station-user"><span>AN</span><div><b>Amina Nakiwala</b><small>Station attendant</small></div></div>
+        <div className="station-user">
+          <span>{initials(staffName)}</span>
+          <div><b>{staffName}</b><small>Station attendant</small></div>
+          <button type="button" onClick={onLogout}>Log out</button>
+        </div>
       </aside>
       <section className="station-main">
         <header>

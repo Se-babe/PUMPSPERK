@@ -37,7 +37,7 @@ function Header({ view, setView }: { view: View; setView: (view: View) => void }
         <button onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}>Pricing</button>
       </nav>
       <div className="header-actions">
-        <button className="text-button" onClick={() => navigate("station")}>Sign in</button>
+        <button className="text-button" onClick={() => navigate("driver")}>Log in</button>
         <button className="lime-button" onClick={() => navigate("station")}>Station portal <Icon name="arrow" size={16} /></button>
         <button className="menu-button" aria-label="Open menu" onClick={() => setOpen(!open)}><Icon name="menu" /></button>
       </div>

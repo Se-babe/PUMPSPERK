@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "../icons";
 import {
   REWARDS,
@@ -18,7 +18,7 @@ type Tab = "home" | "rewards" | "activity" | "profile";
 
 export function MotoristApp() {
   const pump = usePumpPerks();
-  const { motorist, join, signOut, redeem, state } = pump;
+  const { motorist, logIn, createAccount, signOut, redeem, state } = pump;
   const [tab, setTab] = useState<Tab>("home");
   const [chosen, setChosen] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export function MotoristApp() {
     setTab("rewards");
   };
 
-  if (!motorist) return <JoinScreen join={join} />;
+  if (!motorist) return <AccountScreen logIn={logIn} createAccount={createAccount} />;
 
   return (
     <main className="mvp-motorist">
@@ -98,7 +98,8 @@ export function MotoristApp() {
                 <li>1,000 points becomes UGX 5,000 off fuel.</li>
                 <li>Give your phone number at any PumpPerks station.</li>
               </ul>
-              <button type="button" className="mvp-secondary" onClick={signOut}>Sign out</button>
+              <button type="button" className="mvp-secondary" onClick={signOut}>Log out</button>
+              <small>Log in again later with this same phone number. Your points stay on the account.</small>
             </section>
           )}
         </div>
@@ -210,38 +211,73 @@ function ActivityRows({ items }: { items: Activity[] }) {
   );
 }
 
-function JoinScreen({ join }: { join: (name: string, phone: string) => Promise<string | null> }) {
+function AccountScreen({
+  logIn,
+  createAccount,
+}: {
+  logIn: (phone: string) => Promise<string | null>;
+  createAccount: (name: string, phone: string) => Promise<string | null>;
+}) {
+  const [mode, setMode] = useState<"login" | "create">("login");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const submit = async (nextName: string, nextPhone: string) => {
+  const switchMode = (next: "login" | "create") => {
+    setMode(next);
+    setError("");
+  };
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
     setSaving(true);
     setError("");
-    const message = await join(nextName, nextPhone);
+    const message = mode === "login" ? await logIn(phone) : await createAccount(name, phone);
+    setSaving(false);
+    if (message) setError(message);
+  };
+
+  const demo = async () => {
+    setSaving(true);
+    setError("");
+    const message = await logIn("0756 365 310");
     setSaving(false);
     if (message) setError(message);
   };
 
   return (
     <main className="mvp-motorist">
-      <form className="mvp-phone mvp-join" onSubmit={(event) => { event.preventDefault(); void submit(name, phone); }}>
+      <form className="mvp-phone mvp-join" onSubmit={(event) => void submit(event)}>
         <span className="section-tag">MOTORIST ACCOUNT</span>
-        <h1>Earn points on every fill-up.</h1>
-        <p>Use the mobile number the attendant will enter at the station. No card is required.</p>
-        <label className="mvp-field">Full name
-          <input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Amina Nakiwala" />
-        </label>
+        <h1>{mode === "login" ? "Log in to your points." : "Create your account."}</h1>
+        <p>
+          {mode === "login"
+            ? "Use the mobile number you gave at the station. Logging out does not remove your points."
+            : "Use the mobile number the attendant will enter at the station. No card is required."}
+        </p>
+        <div className="mvp-auth-switch" role="tablist" aria-label="Account">
+          <button className={mode === "login" ? "active" : ""} type="button" onClick={() => switchMode("login")}>Log in</button>
+          <button className={mode === "create" ? "active" : ""} type="button" onClick={() => switchMode("create")}>Create account</button>
+        </div>
+        {mode === "create" && (
+          <label className="mvp-field">Full name
+            <input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Amina Nakiwala" />
+          </label>
+        )}
         <label className="mvp-field">Mobile number
           <input autoComplete="tel" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0772 000 111" />
         </label>
         {error && <p className="mvp-error">{error}</p>}
-        <button className="lime-button large" type="submit" disabled={saving}>{saving ? "Opening account…" : "Join PumpPerks"}</button>
-        <button className="mvp-secondary" type="button" disabled={saving} onClick={() => void submit("Andrew Kato", "0756 365 310")}>
-          Open Andrew Kato’s demo account
+        <button className="lime-button large" type="submit" disabled={saving}>
+          {saving ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
         </button>
-        <small>4 points for every UGX 1,000. Sample customer Andrew already has 2,480 points.</small>
+        {mode === "login" && (
+          <button className="mvp-secondary" type="button" disabled={saving} onClick={() => void demo()}>
+            Log in as Andrew Kato
+          </button>
+        )}
+        <small>4 points for every UGX 1,000. Andrew Kato’s sample number is 0756 365 310.</small>
       </form>
     </main>
   );

@@ -497,7 +497,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .mvp-reward-list span { color: var(--muted); margin: 4px 0; }
 .mvp-reward-list article > button { min-height: 44px; border: 0; border-radius: 12px; background: var(--forest); color: white; font-weight: 700; }
 .mvp-reward-list article > button:disabled { background: #e6ebe4; color: #6c7c76; }
+.mvp-auth-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 18px 0 16px; }
+.mvp-auth-switch button { min-height: 42px; border-radius: 999px; border: 1px solid var(--line); background: white; font-weight: 700; color: var(--forest); }
+.mvp-auth-switch button.active { background: var(--forest); color: white; border-color: var(--forest); }
+.mvp-profile > small { color: var(--muted); margin-top: 8px; }
 .mvp-join { padding: 36px 22px 48px; }
+.mvp-staff-gate { min-height: calc(100vh - 78px); display: grid; place-items: center; padding: 24px 16px; background: #e7eee4; }
+.mvp-staff-card { width: min(440px, 100%); background: #fbfcf8; border-radius: 20px; padding: 28px 22px 32px; }
+.mvp-staff-card h1 { font: 700 34px/1.05 "Manrope"; letter-spacing: -.04em; margin: 8px 0 10px; }
+.mvp-staff-card > p, .mvp-staff-card > small { color: var(--muted); line-height: 1.5; }
+.mvp-staff-card > small { display: block; margin-top: 14px; }
+.mvp-staff-card .lime-button { width: 100%; }
 .mvp-join h1 { font: 700 36px/1.05 "Manrope"; letter-spacing: -.04em; margin: 8px 0 10px; }
 .mvp-field { display: grid; gap: 6px; font-size: 13px; font-weight: 700; margin-bottom: 14px; }
 .mvp-field input, .mvp-field select, .table-filters select { width: 100%; min-height: 48px; border: 1px solid var(--line); border-radius: 12px; background: white; color: var(--forest); padding: 0 14px; font-size: 16px; }
@@ -521,6 +531,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .mvp-station .station-sidebar nav button { font-size: 14px; }
 .mvp-station .station-sidebar .brand > span:last-child, .mvp-station .station-profile div, .mvp-station .station-profile b { font-size: 14px; }
 .mvp-station .station-profile small, .mvp-station .station-user small { font-size: 12px; }
+.mvp-station .station-user b { font-size: 13px; }
+.mvp-station .station-user button { border: 0; background: transparent; color: #d5e7a8; font-weight: 700; font-size: 13px; padding: 8px 0; }
 .mvp-station .station-main > header small { font-size: 12px; }
 .mvp-station .station-main > header h1 { font-size: 32px; }
 .mvp-station .export-button, .mvp-station .station-toolbar button, .mvp-station .table-filters button { font-size: 14px; }

@@ -24,7 +24,8 @@ type PumpApi = {
   remote: boolean;
   state: State;
   motorist: Customer | null;
-  join: (name: string, phone: string) => Promise<string | null>;
+  logIn: (phone: string) => Promise<string | null>;
+  createAccount: (name: string, phone: string) => Promise<string | null>;
   signOut: () => void;
   recordPurchase: (input: PurchaseInput) => Promise<ApplyResult>;
   redeem: (rewardId: string) => Promise<ApplyResult>;
@@ -109,16 +110,26 @@ export function PumpPerksProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
-  const join = async (name: string, phoneRaw: string) => {
+  const rememberMotorist = (phone: string) => {
+    localStorage.setItem(SESSION_KEY, phone);
+    setMotoristPhone(phone);
+  };
+
+  const logIn = async (phoneRaw: string) => {
     const phone = normalizePhone(phoneRaw);
     if (!phone) return "Enter a valid Ugandan mobile number, such as 0756 365 310.";
     const existing = stateRef.current?.customers.some((customer) => customer.phone === phone);
-    if (!existing) {
-      const result = await dispatch({ type: "register", name, phone });
-      if (result.error) return result.error;
-    }
-    localStorage.setItem(SESSION_KEY, phone);
-    setMotoristPhone(phone);
+    if (!existing) return "No account uses this number. Create an account first.";
+    rememberMotorist(phone);
+    return null;
+  };
+
+  const createAccount = async (name: string, phoneRaw: string) => {
+    const phone = normalizePhone(phoneRaw);
+    if (!phone) return "Enter a valid Ugandan mobile number, such as 0756 365 310.";
+    const result = await dispatch({ type: "register", name, phone });
+    if (result.error) return result.error;
+    rememberMotorist(phone);
     return null;
   };
 
@@ -127,7 +138,8 @@ export function PumpPerksProvider({ children }: { children: ReactNode }) {
         remote,
         state,
         motorist: state.customers.find((customer) => customer.phone === motoristPhone) ?? null,
-        join,
+        logIn,
+        createAccount,
         signOut: () => {
           localStorage.removeItem(SESSION_KEY);
           setMotoristPhone(null);
