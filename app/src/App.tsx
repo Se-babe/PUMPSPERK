@@ -229,6 +229,7 @@ function HighFiApp() {
     if (next === "home") url.searchParams.delete("app");
     else url.searchParams.set("app", next === "driver" ? "motorist" : "station");
     window.history.replaceState({}, "", url);
+    window.dispatchEvent(new Event("pumpperks-view"));
     setViewState(next);
   };
   return <div className="high-fi"><Header view={view} setView={setView} />{view === "home" && <HomePage setView={setView} />}{view === "driver" && <MotoristApp />}{view === "station" && <StationApp />}</div>;

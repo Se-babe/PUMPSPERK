@@ -129,6 +129,19 @@ export function customerById(state: State, id: string) {
   return state.customers.find((customer) => customer.id === id);
 }
 
+export function accountState(state: State, phoneRaw: string): State | null {
+  const phone = normalizePhone(phoneRaw);
+  if (!phone) return null;
+  const customer = state.customers.find((item) => item.phone === phone);
+  if (!customer) return null;
+  return {
+    revision: state.revision,
+    seq: state.seq,
+    customers: [customer],
+    activity: state.activity.filter((item) => item.customerId === customer.id),
+  };
+}
+
 export function visitCount(state: State, customerId: string) {
   return state.activity.filter((item) => item.customerId === customerId && item.kind === "earn").length;
 }

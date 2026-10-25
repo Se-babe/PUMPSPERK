@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Connect, Plugin } from "vite";
-import { apply, createSeed, type Action, type State } from "./logic";
+import { accountState, apply, createSeed, normalizePhone, type Action, type ApplyResult, type State } from "./logic";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const FILE = path.join(ROOT, "data", "pumpperks-state.json");
@@ -23,11 +23,24 @@ export function pumpPerksStatePlugin(): Plugin {
 }
 
 const handle: Connect.NextHandleFunction = (request, response, next) => {
-  const url = request.url?.split("?")[0];
-  if (url !== "/api/state" && url !== "/api/action") return next();
+  const requestUrl = new URL(request.url || "/", "http://localhost");
+  const url = requestUrl.pathname;
+  if (url !== "/api/state" && url !== "/api/action" && url !== "/api/account") return next();
 
   response.setHeader("Content-Type", "application/json");
   response.setHeader("Cache-Control", "no-store");
+
+  if (url === "/api/account" && request.method === "GET") {
+    const phone = requestUrl.searchParams.get("phone") ?? "";
+    const account = accountState(readState(), phone);
+    if (!account) {
+      response.statusCode = normalizePhone(phone) ? 404 : 400;
+      response.end(JSON.stringify({ error: response.statusCode === 400 ? "Enter a valid Ugandan mobile number." : "No account uses this number." }));
+      return;
+    }
+    response.end(JSON.stringify(account));
+    return;
+  }
 
   if (url === "/api/state" && request.method === "GET") {
     response.end(JSON.stringify(readState()));
@@ -57,7 +70,7 @@ const handle: Connect.NextHandleFunction = (request, response, next) => {
       const run = chain.then(() => {
         const result = apply(readState(), action);
         writeState(result.state);
-        return result;
+        return visibleResult(result, action);
       });
       chain = run.then(() => undefined, () => undefined);
       run.then(
@@ -74,6 +87,15 @@ const handle: Connect.NextHandleFunction = (request, response, next) => {
   response.statusCode = 405;
   response.end(JSON.stringify({ error: "Method not allowed." }));
 };
+
+function visibleResult(result: ApplyResult, action: Action): ApplyResult {
+  if (action.type !== "register" && action.type !== "redeem") return result;
+  const account = accountState(result.state, action.phone);
+  return {
+    ...result,
+    state: account ?? { revision: result.state.revision, seq: result.state.seq, customers: [], activity: [] },
+  };
+}
 
 function readState(): State {
   try {

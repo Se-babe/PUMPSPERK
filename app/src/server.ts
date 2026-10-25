@@ -2,7 +2,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { apply, createSeed, type Action, type State } from "./mvp/logic.ts";
+import { accountState, apply, createSeed, normalizePhone, type Action, type ApplyResult, type State } from "./mvp/logic.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = path.join(ROOT, "dist");
@@ -25,8 +25,8 @@ let chain: Promise<unknown> = Promise.resolve();
 
 const server = http.createServer((request, response) => {
   const url = new URL(request.url || "/", "http://localhost");
-  if (url.pathname === "/api/state" || url.pathname === "/api/action") {
-    handleApi(request, response, url.pathname);
+  if (url.pathname === "/api/state" || url.pathname === "/api/action" || url.pathname === "/api/account") {
+    handleApi(request, response, url);
     return;
   }
   serveStatic(response, url.pathname);
@@ -37,9 +37,21 @@ server.listen(port, "0.0.0.0", () => {
   console.log(`PumpPerks listening on ${port}`);
 });
 
-function handleApi(request: http.IncomingMessage, response: http.ServerResponse, pathname: string) {
+function handleApi(request: http.IncomingMessage, response: http.ServerResponse, url: URL) {
   response.setHeader("Content-Type", "application/json");
   response.setHeader("Cache-Control", "no-store");
+  const pathname = url.pathname;
+
+  if (pathname === "/api/account" && request.method === "GET") {
+    const account = accountState(readState(), url.searchParams.get("phone") ?? "");
+    if (!account) {
+      response.statusCode = normalizePhone(url.searchParams.get("phone") ?? "") ? 404 : 400;
+      response.end(JSON.stringify({ error: response.statusCode === 400 ? "Enter a valid Ugandan mobile number." : "No account uses this number." }));
+      return;
+    }
+    response.end(JSON.stringify(account));
+    return;
+  }
 
   if (pathname === "/api/state" && request.method === "GET") {
     response.end(JSON.stringify(readState()));
@@ -69,7 +81,7 @@ function handleApi(request: http.IncomingMessage, response: http.ServerResponse,
       const run = chain.then(() => {
         const result = apply(readState(), action);
         writeState(result.state);
-        return result;
+        return visibleResult(result, action);
       });
       chain = run.then(() => undefined, () => undefined);
       run.then(
@@ -104,6 +116,15 @@ function serveStatic(response: http.ServerResponse, pathname: string) {
   response.setHeader("Content-Type", TYPES[path.extname(target)] || "application/octet-stream");
   if (path.basename(target) === "index.html") response.setHeader("Cache-Control", "no-cache");
   fs.createReadStream(target).pipe(response);
+}
+
+function visibleResult(result: ApplyResult, action: Action): ApplyResult {
+  if (action.type !== "register" && action.type !== "redeem") return result;
+  const account = accountState(result.state, action.phone);
+  return {
+    ...result,
+    state: account ?? { revision: result.state.revision, seq: result.state.seq, customers: [], activity: [] },
+  };
 }
 
 function readState(): State {

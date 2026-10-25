@@ -31,7 +31,7 @@ export function MotoristApp() {
   }, [motoristId]);
 
   const reward = REWARDS.find((item) => item.id === chosen);
-  const issued = state.activity.find((item) => item.code === code);
+  const issued = state.activity.find((item) => item.code === code && item.customerId === motorist.id);
 
   const confirm = async () => {
     if (!chosen) return;
@@ -57,6 +57,7 @@ export function MotoristApp() {
           <div>
             <small>PUMPPERKS</small>
             <strong>{greeting()}, {motorist.name.split(" ")[0]}</strong>
+            <span className="mvp-own-points">{motorist.points.toLocaleString("en-US")} points</span>
           </div>
           <span className="mvp-avatar">{initials(motorist.name)}</span>
         </header>
@@ -91,6 +92,8 @@ export function MotoristApp() {
             <section className="mvp-profile">
               <span className="mvp-avatar large">{initials(motorist.name)}</span>
               <h2>{motorist.name}</h2>
+              <p className="mvp-own-points">{motorist.points.toLocaleString("en-US")} points</p>
+              <p>About {formatUgx(pointsValue(motorist.points))} in reward value.</p>
               <p>{formatPhone(motorist.phone)}</p>
               <small>Member since {memberSince(motorist.createdAt)}</small>
               <ul>
