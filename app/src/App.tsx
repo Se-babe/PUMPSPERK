@@ -244,7 +244,8 @@ function HighFiApp() {
     window.dispatchEvent(new Event("pumpperks-view"));
     setViewState(next);
   };
-  return <div className="high-fi"><Header view={view} setView={setView} />{view === "home" && <HomePage setView={setView} />}{view === "login" && <LoginPage onEnter={setView} />}{view === "driver" && <MotoristApp onEnter={setView} />}{view === "station" && <StationApp onEnter={setView} />}{view === "admin" && <AdminApp onEnter={setView} />}</div>;
+  const focused = view !== "home";
+  return <div className={focused ? "high-fi app-only" : "high-fi"}>{!focused && <Header view={view} setView={setView} />}{view === "home" && <HomePage setView={setView} />}{view === "login" && <LoginPage onEnter={setView} />}{view === "driver" && <MotoristApp onEnter={setView} />}{view === "station" && <StationApp onEnter={setView} />}{view === "admin" && <AdminApp onEnter={setView} />}</div>;
 }
 
 function initialView(): View {

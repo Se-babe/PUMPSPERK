@@ -595,3 +595,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .mvp-station .station-main > header > div:last-child { flex-wrap: wrap; }
   .pending-list article { align-items: stretch; flex-direction: column; }
 }
+.app-only .mvp-motorist,
+.app-only .mvp-phone,
+.app-only .mvp-staff-gate,
+.app-only .station-app,
+.app-only .station-sidebar { min-height: 100vh; }
+@media (max-width: 780px) {
+  .app-only .mvp-motorist,
+  .app-only .mvp-phone,
+  .app-only .station-app { min-height: 100vh; }
+  .app-only .mvp-station .station-sidebar { min-height: 0; }
+}
