@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: pumpperks
+    runtime: node
+    plan: free
+    rootDir: "Customer Loyalty Platform (1)"
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: node dist/server.mjs
+    healthCheckPath: /api/state
+    envVars:
+      - key: NODE_VERSION
+        value: "22.22.0"
