@@ -7,16 +7,14 @@ import {
   formatUgx,
   formatWhen,
   initials,
-  isValidName,
   metrics,
   pointsValue,
   rewardById,
   type Reward,
 } from "./logic";
+import { LoginPage } from "./LoginPage";
 import { usePumpPerks } from "./PumpPerksProvider";
-
-const ADMIN_KEY = "pumpperks-mvp-admin";
-const ADMIN_CODE = "4482";
+import { ADMIN_KEY, readNamedSession } from "./sessions";
 
 type Section = "Overview" | "Customers" | "Rewards" | "Redemptions" | "System";
 
@@ -28,9 +26,9 @@ const NAV: [IconName, Section][] = [
   ["settings", "System"],
 ];
 
-export function AdminApp() {
-  const [adminName, setAdminName] = useState<string | null>(() => readAdmin());
-  if (!adminName) return <AdminLogin onSuccess={setAdminName} />;
+export function AdminApp({ onEnter }: { onEnter: (view: "driver" | "station" | "admin") => void }) {
+  const [adminName, setAdminName] = useState<string | null>(() => readNamedSession(ADMIN_KEY));
+  if (!adminName) return <LoginPage onEnter={onEnter} />;
   return <AdminDesk name={adminName} onLogout={() => { localStorage.removeItem(ADMIN_KEY); setAdminName(null); }} />;
 }
 
@@ -275,53 +273,3 @@ function RewardRow({
   );
 }
 
-function AdminLogin({ onSuccess }: { onSuccess: (name: string) => void }) {
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    const nextName = name.trim().replace(/\s+/g, " ");
-    if (!isValidName(nextName)) {
-      setError("Enter your name using letters only.");
-      return;
-    }
-    if (code.trim() !== ADMIN_CODE) {
-      setError("That admin code is not correct. Use 4482 for this test.");
-      return;
-    }
-    localStorage.setItem(ADMIN_KEY, JSON.stringify({ name: nextName }));
-    onSuccess(nextName);
-  };
-
-  return (
-    <main className="mvp-staff-gate">
-      <form className="mvp-staff-card" onSubmit={submit}>
-        <span className="section-tag">ADMIN</span>
-        <h1>Control the pilot.</h1>
-        <p>Adjust points, open or close rewards, and restore the sample data. Customers still only see their own balance.</p>
-        <label className="mvp-field">Your name
-          <input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Andrew Kato" />
-        </label>
-        <label className="mvp-field">Admin code
-          <input inputMode="numeric" autoComplete="off" value={code} onChange={(event) => setCode(event.target.value)} placeholder="4482" />
-        </label>
-        {error && <p className="mvp-error">{error}</p>}
-        <button className="lime-button large" type="submit">Log in</button>
-        <small>This test uses admin code {ADMIN_CODE}. The station attendant code is still 2048.</small>
-      </form>
-    </main>
-  );
-}
-
-function readAdmin() {
-  try {
-    const raw = localStorage.getItem(ADMIN_KEY);
-    if (!raw) return null;
-    const data = JSON.parse(raw) as { name?: string };
-    return data.name && isValidName(data.name) ? data.name : null;
-  } catch {
-    return null;
-  }
-}

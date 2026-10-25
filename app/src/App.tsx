@@ -3,11 +3,13 @@ import { Icon, type IconName } from "./icons";
 import { MotoristApp } from "./mvp/MotoristApp";
 import { PumpPerksProvider } from "./mvp/PumpPerksProvider";
 import { AdminApp } from "./mvp/AdminApp";
+import { LoginPage } from "./mvp/LoginPage";
 import { StationApp } from "./mvp/StationApp";
+import { ADMIN_KEY, STAFF_KEY, readNamedSession } from "./mvp/sessions";
 
 const LowFiApp = lazy(() => import("./LowFiApp"));
 
-type View = "home" | "driver" | "station" | "admin";
+type View = "home" | "login" | "driver" | "station" | "admin";
 
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1723021939081-31f4ab31456a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=85&w=1600";
@@ -28,19 +30,27 @@ function Header({ view, setView }: { view: View; setView: (view: View) => void }
     setOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const openRole = (next: "driver" | "station" | "admin") => {
+    const ready = next === "driver"
+      ? Boolean(localStorage.getItem("pumpperks-mvp-phone"))
+      : next === "station"
+        ? Boolean(readNamedSession(STAFF_KEY))
+        : Boolean(readNamedSession(ADMIN_KEY));
+    navigate(ready ? next : "login");
+  };
   return (
     <header className="hi-header">
       <button className="brand-button" onClick={() => navigate("home")}><Brand /></button>
       <nav className={open ? "header-nav open" : "header-nav"}>
         <button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}>Why PumpPerks</button>
-        <button className={view === "driver" ? "active" : ""} onClick={() => navigate("driver")}>For motorists</button>
-        <button className={view === "station" ? "active" : ""} onClick={() => navigate("station")}>For stations</button>
-        <button className={view === "admin" ? "active" : ""} onClick={() => navigate("admin")}>Admin</button>
+        <button className={view === "driver" ? "active" : ""} onClick={() => openRole("driver")}>For motorists</button>
+        <button className={view === "station" ? "active" : ""} onClick={() => openRole("station")}>For stations</button>
+        <button className={view === "admin" ? "active" : ""} onClick={() => openRole("admin")}>Admin</button>
         <button onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}>Pricing</button>
       </nav>
       <div className="header-actions">
-        <button className="text-button" onClick={() => navigate("driver")}>Log in</button>
-        <button className="lime-button" onClick={() => navigate("station")}>Station portal <Icon name="arrow" size={16} /></button>
+        <button className="text-button" onClick={() => navigate("login")}>Log in</button>
+        <button className="lime-button" onClick={() => openRole("station")}>Station portal <Icon name="arrow" size={16} /></button>
         <button className="menu-button" aria-label="Open menu" onClick={() => setOpen(!open)}><Icon name="menu" /></button>
       </div>
     </header>
@@ -234,7 +244,7 @@ function HighFiApp() {
     window.dispatchEvent(new Event("pumpperks-view"));
     setViewState(next);
   };
-  return <div className="high-fi"><Header view={view} setView={setView} />{view === "home" && <HomePage setView={setView} />}{view === "driver" && <MotoristApp />}{view === "station" && <StationApp />}{view === "admin" && <AdminApp />}</div>;
+  return <div className="high-fi"><Header view={view} setView={setView} />{view === "home" && <HomePage setView={setView} />}{view === "login" && <LoginPage onEnter={setView} />}{view === "driver" && <MotoristApp onEnter={setView} />}{view === "station" && <StationApp onEnter={setView} />}{view === "admin" && <AdminApp onEnter={setView} />}</div>;
 }
 
 function initialView(): View {
@@ -242,6 +252,7 @@ function initialView(): View {
   if (app === "motorist" || app === "driver") return "driver";
   if (app === "station") return "station";
   if (app === "admin") return "admin";
+  if (app === "login") return "login";
   return "home";
 }
 
